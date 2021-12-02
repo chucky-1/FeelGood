@@ -6,5 +6,5 @@ The consumer achieves this speed due to asynchronous commits in Kafka and Batch 
 
 To run the application from the root folder, run the following commands:
 - docker-compose up
-- go run producer.go
+- go run main.go (it is the producer)
 - go run consumer.go
