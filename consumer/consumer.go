@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/caarlos0/env/v6"
 	"github.com/chucky-1/FeelGood/internal/configs"
+	"github.com/chucky-1/FeelGood/internal/repository"
 	"github.com/jackc/pgx/v4"
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
@@ -55,6 +56,7 @@ func main() {
 			return
 		}
 	}(conn, context.Background())
+	rep := repository.NewRepository(conn)
 
 	batch := new(pgx.Batch)
 
@@ -71,9 +73,8 @@ func main() {
 		log.Infof("message at topic/partition/offset %v/%v/%v: %s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
 		batch.Queue("INSERT INTO message VALUES ($1)", "message")
 		if i/2000 == 1 {
-			var batchRes = conn.SendBatch(context.Background(), batch)
-			err2 = batchRes.Close()
-			if err2 != nil {
+			err = rep.SendBatch(ctx, batch)
+			if err != nil {
 				log.Error(err)
 				return
 			}
