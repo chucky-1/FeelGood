@@ -68,7 +68,7 @@ func main() {
 	for {
 		m, err2 := r.ReadMessage(ctx)
 		if err2 != nil {
-			break
+			log.Error(err2)
 		}
 		log.Infof("message at topic/partition/offset %v/%v/%v: %s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
 		batch.Queue("INSERT INTO message VALUES ($1)", "message")
@@ -76,7 +76,7 @@ func main() {
 			err = rep.SendBatch(ctx, batch)
 			if err != nil {
 				log.Error(err)
-				return
+				break
 			}
 			log.Info("2000 messages are read in ", time.Since(start).Milliseconds(), " milliseconds")
 			start = time.Now()
