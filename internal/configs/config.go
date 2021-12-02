@@ -1,5 +1,7 @@
+// Package configs have struct of configuration
 package configs
 
+// Config is struct for configuration
 type Config struct {
 	Host       string `env:"HOST"              envDefault:"localhost"`
 	Port       string `env:"PORT"              envDefault:"9092"`
@@ -9,5 +11,5 @@ type Config struct {
 	PsPassword string `env:"POSTGRES_PASSWORD" envDefault:"testpassword"`
 	PsHost     string `env:"POSTGRES_HOST"     envDefault:"localhost"`
 	PsPort     string `env:"POSTGRES_PORT"     envDefault:"5432"`
-	PsDbName   string `env:"POSTGRES_DB_NAME"  envDefault:"postgres"`
+	PsDBName   string `env:"POSTGRES_DB_NAME"  envDefault:"postgres"`
 }

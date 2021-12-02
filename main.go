@@ -1,18 +1,24 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"github.com/caarlos0/env/v6"
 	"github.com/chucky-1/FeelGood/internal/configs"
-
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
+
+	"context"
+	"fmt"
 	"time"
 )
 
+const (
+	secondForConnect  = 10
+	amountOfMessages  = 2000
+	amountOfGoroutine = 4
+)
+
 func write(conn *kafka.Conn, ch chan int) error {
-	for i:=0; i<2000; i++ {
+	for i := 0; i < amountOfMessages; i++ {
 		_, err := conn.WriteMessages(
 			kafka.Message{Value: []byte("message")},
 		)
@@ -25,7 +31,7 @@ func write(conn *kafka.Conn, ch chan int) error {
 	return nil
 }
 
-func main()  {
+func main() {
 	start := time.Now()
 
 	// Configuration
@@ -39,7 +45,11 @@ func main()  {
 	hostAndPort := cfg.Host + ":" + cfg.Port
 	conn, err := kafka.DialLeader(context.Background(), "tcp", hostAndPort, cfg.Topic, 0)
 	if err != nil {
-		log.Fatal("failed to dial leader: %s", err)
+		log.Fatalf("failed to dial leader: %s", err)
+	}
+	err = conn.SetWriteDeadline(time.Now().Add(time.Second * secondForConnect))
+	if err != nil {
+		log.Fatal(err)
 	}
 	defer func(conn *kafka.Conn) {
 		err = conn.Close()
@@ -47,14 +57,10 @@ func main()  {
 			log.Fatal(err)
 		}
 	}(conn)
-	err = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// Business logic
 	ch := make(chan int)
-	for i:=0; i<4; i++ {
+	for i := 0; i < amountOfGoroutine; i++ {
 		go func() {
 			err = write(conn, ch)
 			if err != nil {
@@ -62,11 +68,12 @@ func main()  {
 			}
 		}()
 	}
-	i:=0
+	i := 0
+	totalMessages := amountOfGoroutine * amountOfMessages
 	for message := range ch {
 		fmt.Println(i, message)
 		i++
-		if i == 8000 {
+		if i == totalMessages {
 			close(ch)
 		}
 	}
