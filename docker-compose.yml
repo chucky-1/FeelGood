@@ -1,14 +1,6 @@
 version: '3.8'
 
 services:
-  app:
-    build: ./
-    depends_on:
-      - kafka
-    ports:
-      - "8000:8000"
-    networks:
-      - mynet
   zookeeper:
     image: 'bitnami/zookeeper:latest'
     ports:
@@ -31,6 +23,29 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
     depends_on:
       - zookeeper
+  postgres:
+    image: postgres:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      - mynet
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=testpassword
+  flyway:
+    image: flyway/flyway
+    command: -url=jdbc:postgresql://postgres:5432/postgres -user=user -password=testpassword migrate
+    volumes:
+      - roach:/var/lib/postgresql/data
+      - ./flyway/sql:/flyway/sql
+    depends_on:
+      - postgres
+    networks:
+      - mynet
+
+volumes:
+  roach:
 
 networks:
   mynet:

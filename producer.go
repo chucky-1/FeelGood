@@ -35,17 +35,24 @@ func main()  {
 		log.Fatal(err)
 	}
 
+	// Kafka connect
 	hostAndPort := cfg.Host + ":" + cfg.Port
 	conn, err := kafka.DialLeader(context.Background(), "tcp", hostAndPort, cfg.Topic, 0)
 	if err != nil {
 		log.Fatal("failed to dial leader: %s", err)
 	}
-
+	defer func(conn *kafka.Conn) {
+		err = conn.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(conn)
 	err = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Business logic
 	ch := make(chan int)
 	for i:=0; i<4; i++ {
 		go func() {
@@ -55,7 +62,6 @@ func main()  {
 			}
 		}()
 	}
-
 	i:=0
 	for message := range ch {
 		fmt.Println(i, message)
@@ -63,9 +69,6 @@ func main()  {
 		if i == 8000 {
 			close(ch)
 		}
-	}
-	if err = conn.Close(); err != nil {
-		log.Fatal("failed to close writer: %s", err)
 	}
 	log.Info("Program execution time ", time.Since(start).Milliseconds(), " milliseconds")
 }
