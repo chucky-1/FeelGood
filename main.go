@@ -3,8 +3,10 @@ package main
 import (
 	"github.com/caarlos0/env/v6"
 	"github.com/chucky-1/FeelGood/internal/configs"
+	"github.com/chucky-1/FeelGood/internal/service"
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
+	"github.com/streadway/amqp"
 
 	"context"
 	"fmt"
@@ -13,23 +15,10 @@ import (
 
 const (
 	secondForConnect  = 10
-	amountOfMessages  = 2000
-	amountOfGoroutine = 4
+	broker            = "rabbit" // kafka or rabbit
+	amountOfMessages  = 50000
+	amountOfGoroutine = 20
 )
-
-func write(conn *kafka.Conn, ch chan int) error {
-	for i := 0; i < amountOfMessages; i++ {
-		_, err := conn.WriteMessages(
-			kafka.Message{Value: []byte("message")},
-		)
-		if err != nil {
-			log.Errorf("failed to write messages: %s", err)
-			return err
-		}
-		ch <- i
-	}
-	return nil
-}
 
 func main() {
 	start := time.Now()
@@ -41,28 +30,62 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Kafka connect
-	hostAndPort := cfg.Host + ":" + cfg.Port
-	conn, err := kafka.DialLeader(context.Background(), "tcp", hostAndPort, cfg.Topic, 0)
-	if err != nil {
-		log.Fatalf("failed to dial leader: %s", err)
-	}
-	err = conn.SetWriteDeadline(time.Now().Add(time.Second * secondForConnect))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func(conn *kafka.Conn) {
-		err = conn.Close()
+	var srv service.Producer
+
+	switch {
+	case broker == "kafka":
+		// Kafka connect
+		hostAndPort := cfg.Host + ":" + cfg.Port
+		conn, err := kafka.DialLeader(context.Background(), "tcp", hostAndPort, cfg.Topic, 0)
+		if err != nil {
+			log.Fatalf("failed to dial leader: %s", err)
+		}
+		err = conn.SetWriteDeadline(time.Now().Add(time.Second * secondForConnect))
 		if err != nil {
 			log.Fatal(err)
 		}
-	}(conn)
+		defer func(conn *kafka.Conn) {
+			err = conn.Close()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}(conn)
+		srv = service.NewKafkaProducer(conn)
+	case broker == "rabbit":
+		// Rabbit connect
+		url := fmt.Sprintf("amqp://%s:%s@%s:%s", cfg.RbUser, cfg.RbPassword, cfg.RbHost, cfg.RbPort)
+		conn, err := amqp.Dial(url)
+		if err != nil {
+			log.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
+		}
+		defer func(conn *amqp.Connection) {
+			err = conn.Close()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}(conn)
+		channel, err := conn.Channel()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer func(channel *amqp.Channel) {
+			err = channel.Close()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}(channel)
+		queue, err := channel.QueueDeclare("hello", true, false, false, false, nil)
+		if err != nil {
+			log.Fatalf("%s: %s", "Failed to declare a queue", err)
+		}
+		srv = service.NewRabbitProducer(channel, &queue)
+	}
 
 	// Business logic
 	ch := make(chan int)
 	for i := 0; i < amountOfGoroutine; i++ {
 		go func() {
-			err = write(conn, ch)
+			err := srv.Write(ch, amountOfMessages, "message")
 			if err != nil {
 				log.Fatal(err)
 			}

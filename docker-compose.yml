@@ -23,6 +23,12 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
     depends_on:
       - zookeeper
+  rabbit:
+    image: rabbitmq:latest
+    ports:
+      - "5672:5672"
+    networks:
+      - mynet
   postgres:
     image: postgres:latest
     restart: always
