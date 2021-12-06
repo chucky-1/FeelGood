@@ -21,9 +21,19 @@ const (
 	secondForConnect   = 10
 	secondForSendBatch = 60
 	broker             = "rabbit" // kafka or rabbit
-	amountOfMessages   = 50000
-	amountOfBatches    = 20
+	amountOfMessages   = 10000
+	amountOfBatches    = 10
 )
+
+func sendBatch(rep *repository.Repository, batch pgx.Batch) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*secondForSendBatch)
+	defer cancel()
+	err := rep.SendBatch(ctx, &batch)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func main() {
 	start, allTime := time.Now(), time.Now()
@@ -114,12 +124,9 @@ func main() {
 		}
 	}()
 	for c := range ch {
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second*secondForSendBatch)
-		defer cancel()
-		err = rep.SendBatch(ctx, &c)
+		err = sendBatch(rep, c)
 		if err != nil {
 			log.Error(err)
-			break
 		}
 		log.Infof("%d messages are read in %d %s", amountOfMessages, time.Since(start).Milliseconds(), " milliseconds")
 		start = time.Now()

@@ -16,8 +16,8 @@ import (
 const (
 	secondForConnect  = 10
 	broker            = "rabbit" // kafka or rabbit
-	amountOfMessages  = 50000
-	amountOfGoroutine = 20
+	amountOfMessages  = 10000
+	amountOfGoroutine = 10
 )
 
 func main() {
