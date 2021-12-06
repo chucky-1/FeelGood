@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/caarlos0/env/v6"
 	"github.com/chucky-1/FeelGood/internal/configs"
+	"github.com/chucky-1/FeelGood/internal/consumer"
 	"github.com/chucky-1/FeelGood/internal/repository"
-	"github.com/chucky-1/FeelGood/internal/service"
 	"github.com/jackc/pgx/v4"
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
@@ -46,7 +46,7 @@ func main() {
 		return
 	}
 
-	var srv service.Consumer
+	var srv consumer.Consumer
 
 	switch {
 	case broker == "kafka":
@@ -60,7 +60,7 @@ func main() {
 			MaxBytes:       maxBytes,
 			CommitInterval: time.Second,
 		})
-		srv = service.NewKafkaConsumer(reader)
+		srv = consumer.NewKafka(reader)
 	case broker == "rabbit":
 		// Rabbit connect
 		url := fmt.Sprintf("amqp://%s:%s@%s:%s", cfg.RbUser, cfg.RbPassword, cfg.RbHost, cfg.RbPort)
@@ -93,7 +93,7 @@ func main() {
 			log.Errorf("%s: %s", "Failed to declare a queue", err)
 			return
 		}
-		srv = service.NewRabbitConsumer(ch, &queue)
+		srv = consumer.NewRabbit(ch, &queue)
 	}
 
 	// Postgres connect

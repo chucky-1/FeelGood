@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/caarlos0/env/v6"
 	"github.com/chucky-1/FeelGood/internal/configs"
-	"github.com/chucky-1/FeelGood/internal/service"
+	"github.com/chucky-1/FeelGood/internal/producer"
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
@@ -30,7 +30,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var srv service.Producer
+	var srv producer.Producer
 
 	switch {
 	case broker == "kafka":
@@ -50,7 +50,7 @@ func main() {
 				log.Fatal(err)
 			}
 		}(conn)
-		srv = service.NewKafkaProducer(conn)
+		srv = producer.NewKafka(conn)
 	case broker == "rabbit":
 		// Rabbit connect
 		url := fmt.Sprintf("amqp://%s:%s@%s:%s", cfg.RbUser, cfg.RbPassword, cfg.RbHost, cfg.RbPort)
@@ -78,7 +78,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("%s: %s", "Failed to declare a queue", err)
 		}
-		srv = service.NewRabbitProducer(channel, &queue)
+		srv = producer.NewRabbit(channel, &queue)
 	}
 
 	// Business logic
