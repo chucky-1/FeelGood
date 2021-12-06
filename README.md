@@ -1,8 +1,12 @@
 Testing message brokers. Rabbit and Kafka
 
-Run the application from the root folder with the following commands:
+Run the application:
 - docker-compose up
-- go run main.go (it is the producer)
-In another terminal:
+
+Run the producer
+- cd producer
+- go run main.go
+
+Run the consumer, in another terminal
 - cd consumer
-- go run consumer.go
+- go run main.go
